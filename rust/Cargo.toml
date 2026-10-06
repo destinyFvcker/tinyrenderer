@@ -1,8 +1,10 @@
 [package]
-name = "rust"
+name = "tinyrenderer"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.104"
 image = { version = "0.25.10", features = ["tga"] }
 rand = "0.10.3"
+tobj = "4.0.5"

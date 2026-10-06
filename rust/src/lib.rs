@@ -1,40 +1,6 @@
-use image::codecs::tga::TgaEncoder;
-use image::{ImageBuffer, Rgb, RgbImage};
-use rand::RngExt;
-use std::fs::File;
-use std::io::BufWriter;
+use image::{ImageBuffer, Rgb};
 
-fn main() -> image::ImageResult<()> {
-    const WIDTH: u32 = 64;
-    const HEIGHT: u32 = 64;
-    let mut framebuffer = RgbImage::new(WIDTH, HEIGHT);
-
-    let mut rng = rand::rng();
-    for _ in 0_u32..(1 << 24) {
-        let ax = rng.random_range(0..WIDTH);
-        let ay = rng.random_range(0..HEIGHT);
-        let bx = rng.random_range(0..WIDTH);
-        let by = rng.random_range(0..HEIGHT);
-        line(
-            ax,
-            ay,
-            bx,
-            by,
-            &mut framebuffer,
-            Rgb([rng.random(), rng.random(), rng.random()]),
-        );
-    }
-
-    // image crate 原点是左上角，tinyrenderer 习惯左下角原点，写出时翻转一下
-    let flipped = image::imageops::flip_vertical(&framebuffer);
-
-    // macOS 预览/ImageIO 不支持 RLE 压缩的 TGA，这里禁用压缩
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/framebuffer.tga");
-    let file = BufWriter::new(File::create(path)?);
-    flipped.write_with_encoder(TgaEncoder::new(file).disable_rle())
-}
-
-fn line(
+pub fn line_naive(
     ax: u32,
     ay: u32,
     bx: u32,
@@ -63,5 +29,39 @@ fn line(
         // 即使浮点误差让结果略微变负，Rust 的 `as` 是饱和转换（钳到 0），
         // 不会像 C++ 那样产生未定义行为。
         framebuffer.put_pixel(x.round() as u32, y.round() as u32, color);
+    }
+}
+
+pub fn line_bresenham(
+    mut ax: u32,
+    mut ay: u32,
+    mut bx: u32,
+    mut by: u32,
+    framebuffer: &mut ImageBuffer<Rgb<u8>, Vec<u8>>,
+    color: Rgb<u8>,
+) {
+    let steep = by.abs_diff(ay) > bx.abs_diff(ax);
+    if steep {
+        std::mem::swap(&mut ax, &mut ay);
+        std::mem::swap(&mut bx, &mut by);
+    }
+
+    if ax > bx {
+        std::mem::swap(&mut ax, &mut bx);
+        std::mem::swap(&mut ay, &mut by);
+    }
+
+    let mut y = ay as i32;
+    let mut ierror: i32 = 0;
+    for x in ax..=bx {
+        if steep {
+            framebuffer.put_pixel(y as u32, x, color);
+        } else {
+            framebuffer.put_pixel(x, y as u32, color);
+        }
+        ierror += 2 * by.abs_diff(ay) as i32;
+        let need_step = ierror > (bx - ax) as i32;
+        y += if by > ay { 1 } else { -1 } * need_step as i32;
+        ierror -= 2 * (bx - ax) as i32 * need_step as i32;
     }
 }
