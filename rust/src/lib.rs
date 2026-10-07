@@ -65,3 +65,64 @@ pub fn line_bresenham(
         ierror -= 2 * (bx - ax) as i32 * need_step as i32;
     }
 }
+
+pub fn scan_rasterization(
+    ax: u32,
+    ay: u32,
+    bx: u32,
+    by: u32,
+    cx: u32,
+    cy: u32,
+    framebuffer: &mut ImageBuffer<Rgb<u8>, Vec<u8>>,
+    color: Rgb<u8>,
+) {
+    let (mut ax, mut ay, mut bx, mut by, mut cx, mut cy) = (
+        ax as i32, ay as i32, bx as i32, by as i32, cx as i32, cy as i32,
+    );
+
+    if ay > by {
+        std::mem::swap(&mut ax, &mut bx);
+        std::mem::swap(&mut ay, &mut by);
+    }
+    if ay > cy {
+        std::mem::swap(&mut ax, &mut cx);
+        std::mem::swap(&mut ay, &mut cy);
+    }
+    if by > cy {
+        std::mem::swap(&mut bx, &mut cx);
+        std::mem::swap(&mut by, &mut cy);
+    }
+
+    let total_height = (cy - ay) as f32;
+    if ay != by {
+        let segment_height = (by - ay) as f32;
+        for y in ay..=by {
+            let x_a = ax + ((cx - ax) as f32 * (y - ay) as f32 / total_height).round() as i32;
+            let x_b1 = ax + ((bx - ax) as f32 * (y - ay) as f32 / segment_height).round() as i32;
+            line_naive(
+                x_a as u32,
+                y as u32,
+                x_b1 as u32,
+                y as u32,
+                framebuffer,
+                color,
+            );
+        }
+    }
+
+    if by != cy {
+        let segment_height = (cy - by) as f32;
+        for y in by..=cy {
+            let x_a = ax + ((cx - ax) as f32 * (y - ay) as f32 / total_height).round() as i32;
+            let x_b2 = bx + ((cx - bx) as f32 * (y - by) as f32 / segment_height).round() as i32;
+            line_naive(
+                x_a as u32,
+                y as u32,
+                x_b2 as u32,
+                y as u32,
+                framebuffer,
+                color,
+            );
+        }
+    }
+}
