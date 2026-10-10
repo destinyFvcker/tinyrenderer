@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufWriter};
 
 use image::{Rgb, RgbImage, codecs::tga::TgaEncoder};
-use tinyrenderer::scan_rasterization;
+use tinyrenderer::bounding_box_rasterization;
 
 const WIDTH: u32 = 128;
 const HEIGHT: u32 = 128;
@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
         let [x3, y3] = positions[i3 * 2..i3 * 2 + 2] else {
             panic!("expected 2 elements")
         };
-        scan_rasterization(
+        bounding_box_rasterization(
             x1,
             y1,
             x2,
@@ -49,7 +49,7 @@ fn main() -> anyhow::Result<()> {
     // macOS 预览/ImageIO 不支持 RLE 压缩的 TGA，这里禁用压缩
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/target/framebuffer_tra_naive.tga"
+        "/target/framebuffer_tra_bounding_box.tga"
     );
     let file = BufWriter::new(File::create(path)?);
     flipped.write_with_encoder(TgaEncoder::new(file).disable_rle())?;
